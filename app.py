@@ -42,7 +42,7 @@ def gerar_pdf(df, total, faltas):
 
 @st.cache_resource
 def carrega_modelo():
-    m = YOLOWorld('yolov8s-worldv2.pt')
+    m = YOLO('yolov8s-worldv2.pt')
     m.set_classes(list(MAPA.keys()))
     return m
 
