@@ -1,6 +1,5 @@
-
 streamlit
-ultralytics
-opencv-python-headless
-pillow
 fpdf2
+pillow
+opencv-python-headless
+ultralytics==8.0.196
