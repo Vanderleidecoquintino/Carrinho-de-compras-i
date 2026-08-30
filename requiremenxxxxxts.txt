@@ -1,7 +1,0 @@
-streamlit
-ultralytics
-opencv-python-headless
-fpdf2
-pandas
-pillow
-torch
