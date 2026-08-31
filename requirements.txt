@@ -2,4 +2,4 @@ streamlit
 ultralytics==8.3.0
 Pillow
 python-barcode
-requests
+pyzbar
