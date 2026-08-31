@@ -20,7 +20,6 @@ def load_produtos():
     try:
         with open("produtos.csv", encoding="utf-8", errors="ignore") as f:
             reader = csv.DictReader(f)
-            # deixa minusculo pra não quebrar
             reader.fieldnames = [h.strip().lower() for h in reader.fieldnames]
             for row in reader:
                 cod = str(row.get("codigo") or row.get("ean") or row.get("cod") or "").strip()
@@ -33,7 +32,6 @@ def load_produtos():
                 if cod:
                     mapa[cod] = {"codigo": cod, "nome": nome, "preco": preco}
     except FileNotFoundError:
-        st.warning("produtos.csv não encontrado, usando exemplo")
         mapa["7896102500825"] = {"codigo":"7896102500825","nome":"Ketchup Quero","preco":8.90}
     return mapa
 
@@ -53,13 +51,10 @@ if foto:
     if leitura:
         cod_lido = leitura[0].data.decode()
         st.info(f"Código lido: {cod_lido}")
-
         prod = MAPA.get(cod_lido)
-
         if prod:
             st.markdown(f"## {prod['nome']}")
             st.markdown(f"### R$ {prod['preco']:.2f}")
-
             if st.button("Adicionar ao carrinho", type="primary", key=f"add_{cod_lido}"):
                 st.session_state.carrinho.append(prod)
                 st.session_state.total += prod['preco']
@@ -70,7 +65,8 @@ if foto:
     else:
         st.warning("Não li o barcode, tentando YOLO...")
         result = model(img, verbose=False)
-        st.image(result[0].plot(), use_container_width=True)
+        # CORRIGIDO AQUI
+        st.image(result[0].plot())
 
 st.divider()
 st.subheader(f"Carrinho - Total R$ {st.session_state.total:.2f}")
@@ -79,9 +75,7 @@ if not st.session_state.carrinho:
     st.write("Carrinho vazio")
 else:
     for i, item in enumerate(st.session_state.carrinho):
-        col1, col2 = st.columns([4,1])
-        col1.write(f"{i+1}. {item['nome']}")
-        col2.write(f"R$ {item['preco']:.2f}")
+        st.write(f"{i+1}. {item['nome']} - R$ {item['preco']:.2f}")
 
     if st.button("Limpar carrinho"):
         st.session_state.carrinho = []
