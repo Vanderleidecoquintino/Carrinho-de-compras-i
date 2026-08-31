@@ -2,10 +2,12 @@ import streamlit as st
 from ultralytics import YOLO
 from PIL import Image
 from pyzbar.pyzbar import decode
-import csv, os
+import csv
+import os
 
-st.title("🛒 Carrinho PRO - Quero")
-st.success("Deu certo bj na bunda - base estável")
+st.set_page_config(page_title="Carrinho Quero")
+st.title("🛒 Carrinho Quero")
+st.success("Deu certo bj na bunda")
 
 @st.cache_resource
 def load_model():
@@ -15,63 +17,73 @@ model = load_model()
 @st.cache_data
 def load_produtos():
     mapa = {}
-    if os.path.exists("produtos.csv"):
-        with open("produtos.csv", encoding="utf-8") as f:
-            for r in csv.DictReader(f):
-                mapa[r["codigo"].strip()] = {
-                    "nome": r["nome"],
-                    "preco": float(r["preco"]),
-                    "codigo": r["codigo"]
-                }
-        st.toast(f"CSV com {len(mapa)} produtos")
-    else:
-        mapa = {
-            "7896102500825": {"nome": "Ketchup Quero", "preco": 8.90, "codigo": "7896102500825"},
-            "7896102500658": {"nome": "Maionese Quero", "preco": 12.50, "codigo": "7896102500658"},
-        }
+    try:
+        with open("produtos.csv", encoding="utf-8", errors="ignore") as f:
+            reader = csv.DictReader(f)
+            # deixa minusculo pra não quebrar
+            reader.fieldnames = [h.strip().lower() for h in reader.fieldnames]
+            for row in reader:
+                cod = str(row.get("codigo") or row.get("ean") or row.get("cod") or "").strip()
+                nome = row.get("nome") or row.get("produto") or row.get("descricao") or "Produto Quero"
+                preco_txt = str(row.get("preco") or row.get("valor") or "0").replace(",", ".")
+                try:
+                    preco = float(preco_txt)
+                except:
+                    preco = 0.0
+                if cod:
+                    mapa[cod] = {"codigo": cod, "nome": nome, "preco": preco}
+    except FileNotFoundError:
+        st.warning("produtos.csv não encontrado, usando exemplo")
+        mapa["7896102500825"] = {"codigo":"7896102500825","nome":"Ketchup Quero","preco":8.90}
     return mapa
 
 MAPA = load_produtos()
 
 if "carrinho" not in st.session_state:
     st.session_state.carrinho = []
+if "total" not in st.session_state:
     st.session_state.total = 0.0
 
-foto = st.camera_input("Escaneie o produto")
-produto_achado = None
+foto = st.camera_input("Aponte para o código de barras")
 
 if foto:
     img = Image.open(foto)
-    # 1. Tenta barcode primeiro
-    cods = decode(img)
-    if cods:
-        cod = cods[0].data.decode()
-        st.info(f"Código lido: {cod}")
-        if cod in MAPA:
-            produto_achado = MAPA[cod]
-    # 2. Se não achou, tenta YOLO
-    if not produto_achado:
-        res = model(img, verbose=False)
-        if len(res[0].boxes) > 0:
-            st.image(res[0].plot(), caption="Objeto detectado")
-            st.warning("Barcode não lido, usando YOLO como backup")
+    leitura = decode(img)
 
-    if produto_achado:
-        st.markdown(f"### {produto_achado['nome']} - R$ {produto_achado['preco']:.2f}")
-        if st.button("✅ Adicionar ao carrinho", type="primary"):
-            st.session_state.carrinho.append(produto_achado)
-            st.session_state.total += produto_achado['preco']
-            st.rerun()
+    if leitura:
+        cod_lido = leitura[0].data.decode()
+        st.info(f"Código lido: {cod_lido}")
+
+        prod = MAPA.get(cod_lido)
+
+        if prod:
+            st.markdown(f"## {prod['nome']}")
+            st.markdown(f"### R$ {prod['preco']:.2f}")
+
+            if st.button("Adicionar ao carrinho", type="primary", key=f"add_{cod_lido}"):
+                st.session_state.carrinho.append(prod)
+                st.session_state.total += prod['preco']
+                st.toast(f"{prod['nome']} adicionado!")
+                st.rerun()
+        else:
+            st.error(f"Código {cod_lido} não está no produtos.csv")
     else:
-        if cods or 'res' in locals():
-            st.error("Produto não cadastrado no produtos.csv")
+        st.warning("Não li o barcode, tentando YOLO...")
+        result = model(img, verbose=False)
+        st.image(result[0].plot(), use_container_width=True)
 
 st.divider()
-st.subheader(f"Total: R$ {st.session_state.total:.2f}")
-for i, p in enumerate(st.session_state.carrinho):
-    st.write(f"{i+1}. {p['nome']} - R$ {p['preco']:.2f}")
+st.subheader(f"Carrinho - Total R$ {st.session_state.total:.2f}")
 
-if st.button("Limpar carrinho"):
-    st.session_state.carrinho = []
-    st.session_state.total = 0.0
-    st.rerun()
+if not st.session_state.carrinho:
+    st.write("Carrinho vazio")
+else:
+    for i, item in enumerate(st.session_state.carrinho):
+        col1, col2 = st.columns([4,1])
+        col1.write(f"{i+1}. {item['nome']}")
+        col2.write(f"R$ {item['preco']:.2f}")
+
+    if st.button("Limpar carrinho"):
+        st.session_state.carrinho = []
+        st.session_state.total = 0.0
+        st.rerun()
