@@ -1,6 +1,5 @@
 
 streamlit==1.39.0
-python-barcode
 opencv-python-headless==4.10.0.84
 ultralytics==8.3.0
 torch==2.2.2
@@ -8,5 +7,6 @@ torchvision==0.17.2
 fpdf2==2.7.8
 pillow==10.4.0
 pandas==2.2.3
-numpy==1.26.4
+numpy==1.26.0
+python-barcode
 git+https://github.com/openai/CLIP.git
