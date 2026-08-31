@@ -1,8 +1,19 @@
 import streamlit as st
 from PIL import Image
+import random
+# pra código de barras
+from barcode import Code128
+from barcode.writer import ImageWriter
+import io
 
 st.set_page_config(page_title="Carrinho PRO", layout="wide")
 st.title("Carrinho de Compras PRO 🛒")
+
+# TABELA DE PRODUTOS COM PREÇO E CÓDIGO
+PRODUTOS = {
+    "bottle": {"nome": "Ketchup Quero 400g", "preco": 8.90, "codigo": "7896102500825"},
+    "cup": {"nome": "Maionese Quero 500g", "preco": 12.50, "codigo": "7896102500658"},
+}
 
 @st.cache_resource
 def carregar_modelo():
@@ -24,36 +35,43 @@ if arquivo:
     col1.image(img, caption="Original")
 
     with st.spinner("Analisando..."):
-        results = modelo(img, conf=0.3) # confiança baixa pra pegar tudo
+        results = modelo(img, conf=0.3)
         for r in results:
-            im_plot = r.plot()
-            col2.image(im_plot, caption="Detectado")
-
+            col2.image(r.plot(), caption="Detectado")
             for i, box in enumerate(r.boxes):
-                nome = modelo.names[int(box.cls)]
-                conf = float(box.conf)
-                # Mostra o botão SEMPRE
-                if col1.button(f"➕ Adicionar {nome} ({conf:.0%}) no carrinho", key=f"add_{i}"):
-                    st.session_state.carrinho.append({"nome": "Ketchup Quero 400g", "conf": conf})
-                    st.success("Adicionado!")
-                    st.rerun()
+                cls_nome = modelo.names[int(box.cls)]
+                if cls_nome in PRODUTOS:
+                    prod = PRODUTOS[cls_nome]
+                    if col1.button(f"➕ Adicionar {prod['nome']} - R$ {prod['preco']:.2f}", key=f"add_{i}_{random.randint(0,9999)}"):
+                        st.session_state.carrinho.append(prod)
+                        st.success(f"{prod['nome']} adicionado!")
+                        st.rerun()
 
-# CESTA - ESSA PARTE AGORA SEMPRE APARECE
+# --- CESTA COM PREÇO ---
 st.divider()
 st.subheader(f"🛒 Sua Cesta ({len(st.session_state.carrinho)} itens)")
 
 if len(st.session_state.carrinho) == 0:
-    st.info("A cesta está vazia. Tire uma foto e clique em Adicionar.")
+    st.info("Cesta vazia. Tire uma foto.")
 else:
     total = 0
     for i, item in enumerate(st.session_state.carrinho):
-        c1, c2 = st.columns([4,1])
-        c1.write(f"{i+1}. {item['nome']}")
-        if c2.button("❌ Remover", key=f"del_{i}"):
+        c1, c2, c3 = st.columns([3,1,1])
+        c1.write(f"{item['nome']}")
+        c2.write(f"R$ {item['preco']:.2f}")
+        total += item['preco']
+        if c3.button("❌", key=f"del_{i}"):
             st.session_state.carrinho.pop(i)
             st.rerun()
     
-    if st.button("Finalizar Compra"):
+    st.markdown(f"### **Total: R$ {total:.2f}**")
+
+    if st.button("Finalizar Compra e Gerar Código de Barras", type="primary"):
         st.balloons()
-        st.success("Compra finalizada!")
+        # GERA CÓDIGO DE BARRAS DA COMPRA
+        codigo_compra = f"200{random.randint(1000000,9999999)}"
+        buffer = io.BytesIO()
+        Code128(codigo_compra, writer=ImageWriter()).write(buffer)
+        st.success(f"Compra #{codigo_compra} - Total R$ {total:.2f}")
+        st.image(buffer, caption=f"Código de Barras: {codigo_compra} - Passe no scanner do caixa")
         st.session_state.carrinho = []
