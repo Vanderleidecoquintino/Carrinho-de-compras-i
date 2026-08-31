@@ -14,10 +14,18 @@ PRODUTOS = {
     "bowl": {"nome": "Molho Quero", "preco": 6.90, "codigo": "7896102500111"},
 }
 
+
 @st.cache_resource
 def carregar_modelo():
     from ultralytics import YOLO
-    return YOLO('yolov8n.pt')
+    # Força usar CPU e não travar no download
+    modelo = YOLO('yolov8n.pt') 
+    return modelo
+
+
+
+
+
 
 if 'carrinho' not in st.session_state:
     st.session_state.carrinho = []
