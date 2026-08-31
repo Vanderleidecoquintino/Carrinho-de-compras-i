@@ -1,7 +1,5 @@
-streamlit==1.39.0
+streamlit
 ultralytics==8.3.0
-cv2
+Pillow
 python-barcode
-pandas
-pillow
-opencv-python-headless
+requests
