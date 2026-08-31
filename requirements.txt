@@ -1,4 +1,5 @@
 streamlit
+cv2
 fpdf2
 pillow
 opencv-python-headless
