@@ -1,5 +1,7 @@
 streamlit
 ultralytics==8.3.0
+opencv-python-headless==4.8.1.78
 Pillow
-python-barcode
 pyzbar
+numpy==2.0
+pyarrow==14.0.1
