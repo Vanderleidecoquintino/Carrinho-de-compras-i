@@ -1,6 +1,7 @@
-streamlit
-cv2
-fpdf2
-pillow
-opencv-python-headless
-ultralytics==8.0.196
+streamlit==1.39.0
+opencv-python-headless==4.10.0.84
+ultralytics==8.3.0
+fpdf2==2.7.8
+pillow==10.4.0
+pandas==2.2.3
+numpy==1.26.4
