@@ -1,5 +1,6 @@
 
 streamlit==1.39.0
+python-barcode
 opencv-python-headless==4.10.0.84
 ultralytics==8.3.0
 torch==2.2.2
