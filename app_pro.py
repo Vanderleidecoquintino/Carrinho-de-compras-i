@@ -23,12 +23,6 @@ if 'carrinho' not in st.session_state:
     st.session_state.carrinho = []
 if 'detectados' not in st.session_state:
     st.session_state.detectados = []
-if 'codigo_final' not in st.session_state:
-    st.session_state.codigo_final = None
-if 'total_final' not in st.session_state:
-    st.session_state.total_final = 0
-if 'buffer_final' not in st.session_state:
-    st.session_state.buffer_final = None
 
 modelo = carregar_modelo()
 
@@ -51,7 +45,7 @@ if arquivo:
                 if cls_nome in PRODUTOS:
                     st.session_state.detectados.append(PRODUTOS[cls_nome])
 
-# BOTOES FORA DO LOOP
+# BOTOES FORA DO LOOP - AGORA ADICIONA
 if st.session_state.detectados:
     st.success(f"Encontrado: {len(st.session_state.detectados)} produto(s)")
     for idx, prod in enumerate(st.session_state.detectados):
@@ -60,7 +54,7 @@ if st.session_state.detectados:
             st.success(f"{prod['nome']} adicionado!")
             st.rerun()
 
-# --- CESTA ---
+# --- CESTA COM PREÇO ---
 st.divider()
 st.subheader(f"🛒 Sua Cesta ({len(st.session_state.carrinho)} itens)")
 
@@ -84,20 +78,8 @@ else:
         codigo_compra = f"200{random.randint(1000000,9999999)}"
         buffer = io.BytesIO()
         Code128(codigo_compra, writer=ImageWriter()).write(buffer)
-        buffer.seek(0)
-        st.session_state.codigo_final = codigo_compra
-        st.session_state.buffer_final = buffer.getvalue()
-        st.session_state.total_final = total
-
-# MOSTRA BARCODE E TRAVA PRA NÃO SUMIR
-if st.session_state.codigo_final:
-    st.divider()
-    st.success(f"Compra #{st.session_state.codigo_final} - Total R$ {st.session_state.total_final:.2f}")
-    st.image(st.session_state.buffer_final, caption=f"Código: {st.session_state.codigo_final} - Passe no scanner")
-    if st.button("🆕 Nova Compra"):
+        buffer.seek(0) # <- CORREÇÃO IMPORTANTE
+        st.success(f"Compra #{codigo_compra} - Total R$ {total:.2f}")
+        st.image(buffer, caption=f"Código: {codigo_compra} - Passe no scanner")
         st.session_state.carrinho = []
         st.session_state.detectados = []
-        st.session_state.codigo_final = None
-        st.session_state.buffer_final = None
-        st.session_state.total_final = 0
-        st.rerun()
