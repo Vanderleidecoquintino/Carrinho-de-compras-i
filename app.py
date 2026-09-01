@@ -55,7 +55,7 @@ produtos = [
 def bip():
     st.markdown('<audio autoplay><source src="https://cdn.freesound.org/previews/4/4587_3198-lq.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
 
-st.title("🛒 ATACADÃO cliente")
+st.title("🛒 CLIENTE ATACADÃO ")
 
 foto = st.camera_input("📸 Aponte pro produto e bipa")
 
@@ -74,7 +74,7 @@ if foto:
             st.success(f"BIP! Detectei: {', '.join(visto)}")
             # Filtra produtos que combinam com o que foi visto
             sugestoes = [p for p in produtos if any(v in p['yolo'] for v in visto)]
-            if not sugestoes: sugestoes = produtos[:5]
+            if not sugestoes: sugestoes = produtos[:10]
 
             st.write("Sugestões inteligentes:")
             for i,p in enumerate(sugestoes[:5]):
