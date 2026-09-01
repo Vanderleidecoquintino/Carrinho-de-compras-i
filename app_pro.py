@@ -45,15 +45,21 @@ if arquivo:
                 if cls_nome in PRODUTOS:
                     st.session_state.detectados.append(PRODUTOS[cls_nome])
 
+
+            
+
 if st.session_state.detectados:
     st.success(f"Encontrado: {len(st.session_state.detectados)} produto(s)")
     for idx, prod in enumerate(st.session_state.detectados):
-        if st.button(f"➕ Adicionar {prod['nome']} - R$ {prod['preco']:.2f}", key=f"add_{idx}_{random.randint(1,9999)}"):
+        if st.button(f"➕ Adicionar {prod['nome']} - R$ {prod['preco']:.2f}", key=f"add_prod_{idx}"):
             novo = prod.copy()
             novo["uid"] = str(uuid.uuid4())
             st.session_state.carrinho.append(novo)
             st.rerun()
 
+
+
+        
 st.divider()
 st.subheader(f"🛒 Sua Cesta ({len(st.session_state.carrinho)} itens)")
 
