@@ -77,7 +77,7 @@ if foto:
             if not sugestoes: sugestoes = produtos[:10]
 
             st.write("Sugestões inteligentes:")
-            for i,p in enumerate(sugestoes[:5]):
+            for i,p in enumerate(sugestoes[:10]):
                 if st.button(f"➕ {p['nome']} R$ {p['preco']:.2f}", key=f"s{i}"):
                     st.session_state.carrinho.append(p)
                     st.session_state.total=sum(x['preco'] for x in st.session_state.carrinho)
