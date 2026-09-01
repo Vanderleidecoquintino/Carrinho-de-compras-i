@@ -1,92 +1,96 @@
 import streamlit as st
-import random, json, os
-from io import BytesIO
+import json, os
 from PIL import Image
 
-st.set_page_config(page_title="Atacadão 1 Bip - BARCODE", page_icon="🛒")
+st.set_page_config(page_title="CAIXA ATACADÃO", page_icon="💰")
+
 st.markdown("""
 <style>
-.stApp { background: linear-gradient(180deg, #FF6600 0%, #FF9A4D 12%, #FFFFFF 28%, #FFFFFF 85%, #FF6600 100%); }
-h1 { background: #FF6600; color: white!important; padding: 15px; border-radius: 15px; text-align: center; font-weight: 900; }
-.stButton > button { background: #FF6600; color: white; border-radius: 12px; font-weight: bold; border: none; }
-.stButton > button[kind="primary"] { background: #00A300!important; font-size: 22px; height: 70px; }
+.stApp { background: #111; }
+h1 { background: #00A300; color: white!important; padding: 15px; border-radius: 15px; text-align: center; }
+.stButton > button { background: #00A300; color: white; border-radius: 12px; font-weight: bold; height: 60px; font-size: 20px; }
 </style>
 """, unsafe_allow_html=True)
 
-if 'carrinho' not in st.session_state:
-    st.session_state.carrinho=[]; st.session_state.total=0.0
+st.title("💰 CAIXA ATACADÃO - LEITOR FINAL")
 
-produtos_db = [
-    {"nome":"[BULNEZ] Água 500ml", "preco":1.29, "ean":"7898915120015", "yolo":"water bottle"},
-    {"nome":"[BULNEZ] Macarrão 500g", "preco":2.99, "ean":"7898915120022", "yolo":"pasta package"},
-    {"nome":"Coca-Cola 2L", "preco":9.50, "ean":"7894900011517", "yolo":"Coca-Cola bottle"},
-    {"nome":"Suavit Maionese 450g", "preco":4.49, "ean":"7893000291481", "yolo":"mayonnaise jar"},
-    {"nome":"[BULNEZ] Esponja 3un", "preco":2.49, "ean":"7898915120039", "yolo":"sponge pack"},
-]
+# BANCO DE NOMES PRA MOSTRAR BONITO
+produtos_db = {
+    "7898915120015": "[BULNEZ] Água Mineral 500ml - R$ 1,29",
+    "7894900011517": "Coca-Cola 2L - R$ 9,50",
+    "7893000291481": "Maionese Suavit 450g - R$ 4,49",
+    "7896908200015": "Requeijão Canto Minas 400g - R$ 13,90",
+    "7892300000014": "Óleo Soya 900ml - R$ 6,90",
+    "7896004700014": "Ketchup Quero 400g - R$ 8,90",
+    "7896039710015": "Limpador Limpol 500ml - R$ 2,99",
+    "7898915120040": "Energético Baly 473ml - R$ 5,49",
+    "7898915120022": "[BULNEZ] Macarrão 500g - R$ 2,99",
+    "7898915120050": "[BULNEZ] Massa Fresca 500g - R$ 7,90",
+    "7898915120060": "[BULNEZ] Tortilha 400g - R$ 8,50",
+    "7898915120039": "[BULNEZ] Esponja 3un - R$ 2,49",
+}
 
-def bip(): st.markdown('<audio autoplay><source src="https://cdn.freesound.org/previews/4/4587_3198-lq.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
+st.subheader("BIP 2 - Caixa bipa o barcode final do cliente")
 
-st.title("🛒 ATACADÃO 1 BIP - BARCODE FINAL")
+modo = st.radio("Como vai bipar?", ["📸 Câmera (bipa barcode)", "⌨️ Digitar ID"], horizontal=True)
 
-tab1, tab2 = st.tabs(["📸 Câmera", "📁 Buscar arquivo"])
-with tab1: f1 = st.camera_input("Câmera na loja")
-with tab2: f2 = st.file_uploader("Teste com imagem dos 5", type=["jpg","png","webp"])
-foto = f1 if f1 else f2
+id_lido = ""
 
-if foto:
-    try:
-        from ultralytics import YOLO
-        @st.cache_resource
-        def load():
-            m=YOLO("yolov8s-world.pt")
-            m.set_classes(["water bottle","pasta package","Coca-Cola bottle","mayonnaise jar","sponge pack"])
-            return m
-        model=load()
-        img=Image.open(foto)
-        st.image(img, width=300)
-        res=model.predict(img, verbose=False, conf=0.15)
-        achados=set(model.names[int(b.cls)] for r in res for b in r.boxes)
-        if achados:
-            bip()
-            st.success(f"BIP! Vi: {', '.join(achados)}")
-            for det in achados:
-                for p in produtos_db:
-                    if p['yolo'] in det or det in p['yolo']:
-                        if st.button(f"➕ {p['nome']} | EAN {p['ean']} | R$ {p['preco']:.2f}", key=f"{p['ean']}_{random.randint(0,9999)}"):
-                            st.session_state.carrinho.append(p)
-                            st.session_state.total=sum(x['preco'] for x in st.session_state.carrinho)
-                            st.rerun()
-    except Exception as e: st.error(e)
+if modo == "📸 Câmera (bipa barcode)":
+    foto = st.camera_input("Aponte pro barcode final do cliente")
+    if foto:
+        try:
+            from pyzbar.pyzbar import decode
+            img = Image.open(foto)
+            decodificado = decode(img)
+            if decodificado:
+                id_lido = decodificado[0].data.decode('utf-8')
+                st.success(f"BIP CAIXA! Li: {id_lido}")
+            else:
+                st.warning("Não li, tenta de novo ou digita")
+        except:
+            st.info("pyzbar não instalado, use modo digitar")
+else:
+    id_lido = st.text_input("Cole o ID do barcode final:", placeholder="ex: 1234567890123")
+
+if st.button("💰 PUXAR COMANDA - JOGAR EANS NO PDV", type="primary", use_container_width=True):
+    if not id_lido:
+        st.error("Bipa primeiro!")
+    else:
+        caminho = f"comandas/{id_lido}.json"
+        if os.path.exists(caminho):
+            with open(caminho) as f:
+                dados = json.load(f)
+
+            st.balloons()
+            st.markdown(f"""
+            <div style="background:white;color:black;padding:20px;border-radius:15px;">
+            <h2 style="color:#00A300;text-align:center;">✅ COMANDA {dados['id']}</h2>
+            <hr>
+            """, unsafe_allow_html=True)
+
+            total = 0
+            for ean in dados['eans']:
+                nome = produtos_db.get(ean, f"Produto EAN {ean}")
+                st.code(f"{ean} -> {nome}")
+                # pega preço do nome
+                try:
+                    preco = float(nome.split("R$ ")[1].replace(",","."))
+                    total += preco
+                except: pass
+
+            st.markdown(f"""
+            <h2 style="color:#00A300;">TOTAL: R$ {dados['total']:.2f}</h2>
+            <h3 style="background:#00A300;color:white;padding:10px;border-radius:10px;text-align:center;">LIBERADO - PODE SAIR</h3>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.success(f"CAIXA RECEBEU {len(dados['eans'])} EANs e jogou no PDV Atacadão!")
+
+        else:
+            st.error(f"Comanda {id_lido} não encontrada em /comandas. Gera primeiro no app cliente.")
 
 st.divider()
-mapa={f"{p['nome']} - EAN {p['ean']}":p for p in produtos_db}
-sel=st.selectbox("Manual:", list(mapa.keys()))
-if st.button("➕ ADICIONAR EAN"):
-    p=mapa[sel]; st.session_state.carrinho.append(p)
-    st.session_state.total=sum(x['preco'] for x in st.session_state.carrinho)
-    bip(); st.rerun()
-
-st.divider()
-st.subheader(f"🛒 {len(st.session_state.carrinho)} itens - R$ {st.session_state.total:.2f}")
-for p in st.session_state.carrinho:
-    st.write(f"- {p['nome']} | **EAN {p['ean']}** | R$ {p['preco']:.2f}")
-
-if st.session_state.carrinho:
-    if st.button("✅ GERAR BARCODE FINAL PRO CAIXA", type="primary", use_container_width=True):
-        id_comanda = f"{random.randint(1000000000000,9999999999999)}"
-        dados = {"id": id_comanda, "eans": [p['ean'] for p in st.session_state.carrinho], "total": st.session_state.total}
-        os.makedirs("comandas", exist_ok=True)
-        with open(f"comandas/{id_comanda}.json","w") as f: json.dump(dados,f)
-
-        import barcode
-        from barcode.writer import ImageWriter
-        CODE128=barcode.get_barcode_class('code128')
-        bar=CODE128(id_comanda, writer=ImageWriter())
-        buf=BytesIO(); bar.write(buf)
-
-        bip(); st.balloons()
-        st.success(f"COMANDA {id_comanda}")
-        st.image(buf.getvalue(), caption=f"CAIXA: Bipe este CODE128")
-        st.code(id_comanda)
-        st.write("EANs que o caixa vai receber ao bipar:")
-        for ean in dados['eans']: st.code(ean)
+st.write("Comandas na pasta:")
+if os.path.exists("comandas"):
+    st.write(os.listdir("comandas"))
