@@ -55,7 +55,7 @@ produtos = [
 def bip():
     st.markdown('<audio autoplay><source src="https://cdn.freesound.org/previews/4/4587_3198-lq.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
 
-st.title("🛒 ATACADÃO - 1 BIP")
+st.title("🛒 ATACADÃO cliente")
 
 foto = st.camera_input("📸 Aponte pro produto e bipa")
 
