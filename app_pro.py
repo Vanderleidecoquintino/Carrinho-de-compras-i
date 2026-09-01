@@ -2,6 +2,7 @@ import streamlit as st
 from PIL import Image
 import random
 import io
+import uuid
 from barcode import Code128
 from barcode.writer import ImageWriter
 
@@ -34,7 +35,6 @@ if arquivo:
     img = Image.open(arquivo)
     col1, col2 = st.columns(2)
     col1.image(img, caption="Original")
-
     with st.spinner("Analisando..."):
         results = modelo(img, conf=0.3)
         st.session_state.detectados = []
@@ -45,16 +45,15 @@ if arquivo:
                 if cls_nome in PRODUTOS:
                     st.session_state.detectados.append(PRODUTOS[cls_nome])
 
-# BOTOES FORA DO LOOP - AGORA ADICIONA
 if st.session_state.detectados:
     st.success(f"Encontrado: {len(st.session_state.detectados)} produto(s)")
     for idx, prod in enumerate(st.session_state.detectados):
-        if st.button(f"➕ Adicionar {prod['nome']} - R$ {prod['preco']:.2f}", key=f"add_prod_{idx}"):
-            st.session_state.carrinho.append(prod)
-            st.success(f"{prod['nome']} adicionado!")
+        if st.button(f"➕ Adicionar {prod['nome']} - R$ {prod['preco']:.2f}", key=f"add_{idx}_{random.randint(1,9999)}"):
+            novo = prod.copy()
+            novo["uid"] = str(uuid.uuid4())
+            st.session_state.carrinho.append(novo)
             st.rerun()
 
-# --- CESTA COM PREÇO ---
 st.divider()
 st.subheader(f"🛒 Sua Cesta ({len(st.session_state.carrinho)} itens)")
 
@@ -62,24 +61,21 @@ if len(st.session_state.carrinho) == 0:
     st.info("Cesta vazia. Tire uma foto.")
 else:
     total = 0
-    for i, item in enumerate(st.session_state.carrinho):
+    for item in st.session_state.carrinho[:]:
         c1, c2, c3 = st.columns([3,1,1])
         c1.write(f"{item['nome']}")
         c2.write(f"R$ {item['preco']:.2f}")
         total += item['preco']
-        if c3.button("❌", key=f"del_{i}"):
-            st.session_state.carrinho.pop(i)
+        if c3.button("❌", key=f"del_{item['uid']}"):
+            st.session_state.carrinho = [x for x in st.session_state.carrinho if x["uid"] != item["uid"]]
             st.rerun()
     
     st.markdown(f"### **Total: R$ {total:.2f}**")
-
     if st.button("Finalizar Compra e Gerar Código de Barras", type="primary"):
         st.balloons()
         codigo_compra = f"200{random.randint(1000000,9999999)}"
         buffer = io.BytesIO()
         Code128(codigo_compra, writer=ImageWriter()).write(buffer)
-        buffer.seek(0) # <- CORREÇÃO IMPORTANTE
+        buffer.seek(0)
         st.success(f"Compra #{codigo_compra} - Total R$ {total:.2f}")
         st.image(buffer, caption=f"Código: {codigo_compra} - Passe no scanner")
-        st.session_state.carrinho = []
-        st.session_state.detectados = []
