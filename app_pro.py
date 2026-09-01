@@ -3,6 +3,8 @@ import pandas as pd
 import os
 import requests
 from PIL import Image
+from datetime import datetime
+from io import BytesIO
 
 st.set_page_config(page_title="Atacadão PRO - Busca + YOLO", layout="wide", page_icon="🛒")
 
@@ -35,6 +37,7 @@ def buscar_atacadao(termo, cep="02170901"):
 
 if 'carrinho' not in st.session_state: st.session_state.carrinho = []
 if 'total' not in st.session_state: st.session_state.total = 0.0
+if 'finalizado' not in st.session_state: st.session_state.finalizado = False
 
 tab1, tab2 = st.tabs(["🔍 1. Buscar Preços Atacadão", "📷 2. Carrinho YOLO PRO"])
 
@@ -99,13 +102,12 @@ with tab1:
 
 with tab2:
     st.title("📷 Carrinho PRO - YOLO Atacadão")
-
     if not os.path.exists(CSV_FILE):
         st.warning("Vá na aba 1 e busque produtos primeiro!")
         st.stop()
 
     df = pd.read_csv(CSV_FILE)
-    st.caption(f"{len(df)} produtos do Atacadão carregados")
+    st.caption(f"{len(df)} produtos carregados")
 
     from ultralytics import YOLO
     @st.cache_resource
@@ -129,7 +131,6 @@ with tab2:
             if candidatos.empty:
                 candidatos = df
                 st.info("Classe não mapeada, escolha manualmente:")
-
             for idx, row in candidatos.iterrows():
                 col1, col2 = st.columns([3,1])
                 with col1:
@@ -142,10 +143,11 @@ with tab2:
                             "codigo": row['codigo']
                         })
                         st.session_state.total = sum(i['preco'] for i in st.session_state.carrinho)
+                        st.session_state.finalizado = False
                         st.toast(f"{row['nome']} adicionado!")
                         st.rerun()
         else:
-            st.warning("Nenhum objeto detectado, tente aproximar")
+            st.warning("Nenhum objeto detectado")
 
     st.divider()
     st.subheader(f"🛒 Cesta: {len(st.session_state.carrinho)} itens - Total R$ {st.session_state.total:.2f}")
@@ -153,16 +155,47 @@ with tab2:
     if st.session_state.carrinho:
         for i, item in enumerate(st.session_state.carrinho):
             c1, c2 = st.columns([4,1])
-            with c1: st.write(f"{i+1}. {item['nome']} - R$ {item['preco']:.2f}")
+            with c1: st.write(f"{i+1}. {item['nome']} - R$ {item['preco']:.2f} | {item['codigo']}")
             with c2:
                 if st.button("❌", key=f"del_{i}"):
                     st.session_state.carrinho.pop(i)
                     st.session_state.total = sum(x['preco'] for x in st.session_state.carrinho)
                     st.rerun()
+
+        st.divider()
+        if st.button("✅ FINALIZAR COMPRA E GERAR BARCODE", type="primary", use_container_width=True):
+            st.session_state.finalizado = True
+            st.rerun()
+
+        if st.session_state.finalizado:
+            codigo_compra = datetime.now().strftime("%Y%m%d%H%M%S")
+            st.success(f"Compra finalizada! Código: {codigo_compra}")
+
+            try:
+                import barcode
+                from barcode.writer import ImageWriter
+                EAN = barcode.get_barcode_class('code128')
+                my_code = EAN(codigo_compra, writer=ImageWriter())
+                buffer = BytesIO()
+                my_code.write(buffer)
+                st.image(buffer, caption=f"Código da Compra: {codigo_compra}", width=400)
+            except ImportError:
+                st.warning("Para ver barcode instale: pip install python-barcode")
+                st.code(codigo_compra)
+
+            st.markdown(f"### 🧾 CUPOM ATACADÃO - {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+            for item in st.session_state.carrinho:
+                st.write(f"{item['codigo']} | {item['nome']} | R$ {item['preco']:.2f}")
+            st.markdown(f"### TOTAL: R$ {st.session_state.total:.2f}")
+
+            txt = "\n".join([f"{i['codigo']};{i['nome']};{i['preco']}" for i in st.session_state.carrinho])
+            txt += f"\nTOTAL;{st.session_state.total};{codigo_compra}"
+            st.download_button("📄 Baixar Cupom TXT", txt, f"cupom_{codigo_compra}.txt", "text/plain")
     else:
         st.info("Cesta vazia - detecte e clique em Adicionar")
 
-    if st.button("Limpar Cesta", type="secondary"):
+    if st.button("🗑️ Limpar Cesta"):
         st.session_state.carrinho = []
         st.session_state.total = 0.0
+        st.session_state.finalizado = False
         st.rerun()
