@@ -1,73 +1,118 @@
-
 import streamlit as st
-from ultralytics import YOLO
-import cv2, numpy as np
-from PIL import Image
 import pandas as pd
-from fpdf import FPDF
-import datetime
+import os, json, random
+from PIL import Image
+from datetime import datetime
+from io import BytesIO
+import base64
 
-st.set_page_config(page_title="CestaCheck PRO", page_icon="📦", layout="wide")
-st.title("📦 CestaCheck PRO")
+st.set_page_config(page_title="Atacadão 1 Bip", layout="wide", page_icon="🛒")
 
-MAPA = {
-    "rice bag": "arroz", "beans bag": "feijao", "sugar bag": "acucar",
-    "coffee bag": "cafe", "milk carton": "leite", "cooking oil bottle": "oleo",
-    "pasta bag": "macarrao", "sardine can": "sardinha", "flour bag": "farinha",
-    "biscuit pack": "biscoito", "butter pack": "manteiga", "chocolate powder box": "achocolatado"
-}
-TABELA_PRECO = {
-    "arroz": 29.90, "feijao": 9.50, "acucar": 5.29, "cafe": 18.90,
-    "leite": 4.99, "oleo": 8.49, "macarrao": 4.20, "sardinha": 5.99,
-    "farinha": 6.50, "biscoito": 4.80, "manteiga": 7.20, "achocolatado": 9.90
-}
+CSV_FILE = "produtos_atacadao.csv"
+DB_FILE = "compras.json"
 
-def gerar_pdf(df, total, faltas):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 20)
-    pdf.cell(0, 15, "CestaCheck PRO - Relatorio", ln=True, align='C')
-    pdf.set_font("Arial", '', 10)
-    pdf.cell(0, 10, f"Data: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')} | Total: R$ {total:.2f}", ln=True, align='C')
-    pdf.ln(10)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(60, 10, "Produto", 1); pdf.cell(40, 10, "Status", 1); pdf.cell(40, 10, "Preco", 1); pdf.ln()
-    pdf.set_font("Arial", '', 11)
-    for _, row in df.iterrows():
-        pdf.cell(60, 9, row['Produto'], 1); pdf.cell(40, 9, row['Status'], 1); pdf.cell(40, 9, row['Preco'], 1); pdf.ln()
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, f"Itens em falta: {', '.join(faltas) if faltas else 'Nenhum'}", ln=True)
-    return pdf.output(dest='S').encode('latin1')
+if 'carrinho' not in st.session_state: st.session_state.carrinho=[]
+if 'total' not in st.session_state: st.session_state.total=0.0
+if 'venda_finalizada' not in st.session_state: st.session_state.venda_finalizada=False
 
-@st.cache_resource
-def carrega_modelo():
-    m = YOLO('yolov8s-worldv2.pt')
-    m.set_classes(list(MAPA.keys()))
-    return m
+if not os.path.exists(DB_FILE):
+    with open(DB_FILE,'w') as f: json.dump({},f)
 
-model = carrega_modelo()
-arquivo = st.file_uploader("📸 Arraste a foto da cesta aqui", type=["jpg","png","jpeg"])
+def salvar_compra(id_compra, dados):
+    with open(DB_FILE,'r') as f: db=json.load(f)
+    db[id_compra]=dados
+    with open(DB_FILE,'w') as f: json.dump(db,f)
 
-if arquivo:
-    img = Image.open(arquivo).convert("RGB")
-    results = model.predict(np.array(img), conf=0.10, verbose=False)
-    img_plot = np.array(img).copy()
-    itens_pt, total = [], 0
-    if results[0].boxes is not None:
-        for box in results[0].boxes:
-            x1,y1,x2,y2 = map(int, box.xyxy[0])
-            nome_pt = MAPA.get(results[0].names[int(box.cls[0])], "item")
-            preco = TABELA_PRECO.get(nome_pt, 0)
-            itens_pt.append(nome_pt); total += preco
-            cv2.rectangle(img_plot, (x1,y1), (x2,y2), (0,200,0), 3)
-            cv2.putText(img_plot, f"{nome_pt} R$ {preco:.2f}", (x1, y1-10), 0, 0.7, (0,200,0), 2)
-    col1, col2 = st.columns([1.2, 1])
-    col1.image(img_plot, use_column_width=True)
-    col1.metric("Valor Total na Cesta", f"R$ {total:.2f}")
-    faltas = [p for p in TABELA_PRECO if p not in itens_pt]
-    dados = [{"Produto": p, "Status": "OK" if p in itens_pt else "FALTA", "Preco": f"R$ {TABELA_PRECO[p]:.2f}"} for p in TABELA_PRECO]
-    df = pd.DataFrame(dados)
-    col2.dataframe(df, use_container_width=True, hide_index=True)
-    pdf_bytes = gerar_pdf(df, total, faltas)
-    col2.download_button("📄 Baixar Relatorio PDF", data=pdf_bytes, file_name="Relatorio.pdf", mime="application/pdf", type="primary")
+def buscar_compra(id_compra):
+    with open(DB_FILE,'r') as f: db=json.load(f)
+    return db.get(id_compra)
+
+# Função do som de BIP
+def tocar_bip():
+    bip_base64 = "UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" # bip curto
+    # som real via JS
+    st.markdown("""
+    <audio autoplay>
+    <source src="https://cdn.freesound.org/previews/4/4587_3198-lq.mp3" type="audio/mpeg">
+    </audio>
+    <script>
+    var audio = new Audio('https://cdn.freesound.org/previews/4/4587_3198-lq.mp3');
+    audio.play();
+    </script>
+    """, unsafe_allow_html=True)
+
+tab_cliente, tab_caixa = st.tabs(["📱 CLIENTE", "💻 CAIXA + BIP"])
+
+with tab_cliente:
+    st.title("📱 Aponte e Compre")
+    if not os.path.exists(CSV_FILE):
+        st.error("Crie o produtos_atacadao.csv")
+        st.stop()
+    df=pd.read_csv(CSV_FILE)
+
+    from ultralytics import YOLO
+    @st.cache_resource
+    def load_model(): return YOLO("yolov8n.pt")
+    model=load_model()
+
+    foto=st.camera_input("Aponte para o produto", key="cli")
+    if foto:
+        img=Image.open(foto)
+        results=model(img,verbose=False)
+        classes=set(model.names[int(b.cls)] for r in results for b in r.boxes)
+        if classes:
+            st.success(f"Vi: {', '.join(classes)}")
+            tocar_bip()
+            cand=df[df['classe_yolo'].isin(classes)]
+            if cand.empty: cand=df
+            for idx,row in cand.iterrows():
+                if st.button(f"➕ {row['nome']} - R$ {row['preco']:.2f}",key=f"add{idx}"):
+                    st.session_state.carrinho.append({"nome":row['nome'],"preco":float(row['preco'])})
+                    st.session_state.total=sum(i['preco'] for i in st.session_state.carrinho)
+                    st.toast("BIP! Na cesta!"); st.rerun()
+
+    st.divider()
+    st.subheader(f"🛒 {len(st.session_state.carrinho)} itens - R$ {st.session_state.total:.2f}")
+    for item in st.session_state.carrinho:
+        st.write(f"• {item['nome']} - R$ {item['preco']:.2f}")
+
+    if st.session_state.carrinho:
+        if st.button("✅ GERAR CÓDIGO PARA CAIXA", type="primary", use_container_width=True):
+            id_compra = str(random.randint(1000000000000, 9999999999999))
+            dados = {"id": id_compra, "data": datetime.now().strftime("%d/%m %H:%M"), "itens": st.session_state.carrinho, "total": st.session_state.total}
+            salvar_compra(id_compra, dados)
+            import barcode
+            from barcode.writer import ImageWriter
+            CODE128 = barcode.get_barcode_class('code128')
+            code_img = CODE128(id_compra, writer=ImageWriter())
+            buf = BytesIO(); code_img.write(buf)
+            st.balloons(); tocar_bip()
+            st.success(f"Compra {id_compra} - Mostre pro caixa")
+            st.image(buf.getvalue(), caption=f"ID {id_compra}")
+            st.markdown(f"### {id_compra}")
+
+    if st.button("🗑️ Limpar"): 
+        st.session_state.carrinho=[]; st.session_state.total=0.0; st.rerun()
+
+with tab_caixa:
+    st.title("💻 Terminal - BIPE AQUI")
+    st.info("Clique no campo e bipe a tela do cliente")
+
+    id_bipado = st.text_input("🔫 CAMPO DO BIP:", placeholder="Bipe aqui...", key="caixa_input")
+
+    if id_bipado:
+        compra = buscar_compra(id_bipado.strip())
+        if compra:
+            tocar_bip()
+            st.success(f"✅ COMPRA {compra['id']} - {compra['data']}")
+            for item in compra['itens']:
+                st.write(f"✓ {item['nome']} - R$ {item['preco']:.2f}")
+            st.markdown(f"# TOTAL: R$ {compra['total']:.2f}")
+            if st.button("💰 FINALIZAR VENDA", type="primary", use_container_width=True):
+                tocar_bip()
+                st.balloons()
+                st.success("VENDA FINALIZADA!")
+                st.audio("https://cdn.freesound.org/previews/456/456588_9498993-lq.mp3", autoplay=True)
+                st.session_state.venda_finalizada=True
+        else:
+            st.error(f"Compra {id_bipado} não encontrada")
