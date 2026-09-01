@@ -6,3 +6,4 @@ Pillow==10.4.0
 pyzbar==0.1.9
 numpy==1.26.4
 pyarrow==14.0.1
+python-barcode
