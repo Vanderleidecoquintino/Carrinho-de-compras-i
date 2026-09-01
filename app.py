@@ -3,41 +3,7 @@ import random
 from io import BytesIO
 from PIL import Image
 
-
-st.markdown("""
-<style>
-    .stApp {
-        background: linear-gradient(180deg, #FF6600 0%, #FF8533 15%, #FFFFFF 35%, #FFFFFF 75%, #FF6600 100%);
-    }
-    h1 {
-        background: #FF6600;
-        color: white !important;
-        padding: 15px;
-        border-radius: 15px;
-        text-align: center;
-        font-weight: 900;
-    }
-    .stSelectbox label, .stCameraInput label {
-        color: #FF6600 !important;
-        font-weight: bold;
-    }
-    .stButton > button {
-        background: #FF6600;
-        color: white;
-        border-radius: 12px;
-        font-weight: bold;
-        border: none;
-    }
-    .stButton > button[kind="primary"] {
-        background: #1a8a00 !important;
-        font-size: 18px;
-        height: 60px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-
-st.set_page_config(page_title="Atacadão 1 Bip", page_icon="🛒")
+st.set_page_config(page_title="Atacadão Cliente Vip", page_icon="🛒")
 
 if 'carrinho' not in st.session_state:
     st.session_state.carrinho=[]
