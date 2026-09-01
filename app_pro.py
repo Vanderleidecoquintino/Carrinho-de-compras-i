@@ -1,83 +1,77 @@
 import streamlit as st
-from ultralytics import YOLO
 from PIL import Image
-from pyzbar.pyzbar import decode
-import csv
-import os
+import random
+# pra código de barras
+from barcode import Code128
+from barcode.writer import ImageWriter
+import io
 
-st.set_page_config(page_title="Carrinho Quero")
-st.title("🛒 Carrinho Quero")
-st.success("Deu certo bj na bunda")
+st.set_page_config(page_title="Carrinho PRO", layout="wide")
+st.title("Carrinho de Compras PRO 🛒")
+
+# TABELA DE PRODUTOS COM PREÇO E CÓDIGO
+PRODUTOS = {
+    "bottle": {"nome": "Ketchup Quero 400g", "preco": 8.90, "codigo": "7896102500825"},
+    "cup": {"nome": "Maionese Quero 500g", "preco": 12.50, "codigo": "7896102500658"},
+}
 
 @st.cache_resource
-def load_model():
-    return YOLO("yolov8n.pt")
-model = load_model()
+def carregar_modelo():
+    from ultralytics import YOLO
+    return YOLO('yolov8n.pt')
 
-@st.cache_data
-def load_produtos():
-    mapa = {}
-    try:
-        with open("produtos.csv", encoding="utf-8", errors="ignore") as f:
-            reader = csv.DictReader(f)
-            reader.fieldnames = [h.strip().lower() for h in reader.fieldnames]
-            for row in reader:
-                cod = str(row.get("codigo") or row.get("ean") or row.get("cod") or "").strip()
-                nome = row.get("nome") or row.get("produto") or row.get("descricao") or "Produto Quero"
-                preco_txt = str(row.get("preco") or row.get("valor") or "0").replace(",", ".")
-                try:
-                    preco = float(preco_txt)
-                except:
-                    preco = 0.0
-                if cod:
-                    mapa[cod] = {"codigo": cod, "nome": nome, "preco": preco}
-    except FileNotFoundError:
-        mapa["7896102500825"] = {"codigo":"7896102500825","nome":"Ketchup Quero","preco":8.90}
-    return mapa
-
-MAPA = load_produtos()
-
-if "carrinho" not in st.session_state:
+if 'carrinho' not in st.session_state:
     st.session_state.carrinho = []
-if "total" not in st.session_state:
-    st.session_state.total = 0.0
 
-foto = st.camera_input("Aponte para o código de barras")
+modelo = carregar_modelo()
 
-if foto:
-    img = Image.open(foto)
-    leitura = decode(img)
+uploaded = st.file_uploader("Envie a foto", type=["jpg","png","jpeg"])
+foto_camera = st.camera_input("Ou tire foto agora")
+arquivo = uploaded or foto_camera
 
-    if leitura:
-        cod_lido = leitura[0].data.decode()
-        st.info(f"Código lido: {cod_lido}")
-        prod = MAPA.get(cod_lido)
-        if prod:
-            st.markdown(f"## {prod['nome']}")
-            st.markdown(f"### R$ {prod['preco']:.2f}")
-            if st.button("Adicionar ao carrinho", type="primary", key=f"add_{cod_lido}"):
-                st.session_state.carrinho.append(prod)
-                st.session_state.total += prod['preco']
-                st.toast(f"{prod['nome']} adicionado!")
-                st.rerun()
-        else:
-            st.error(f"Código {cod_lido} não está no produtos.csv")
-    else:
-        st.warning("Não li o barcode, tentando YOLO...")
-        result = model(img, verbose=False)
-        # CORRIGIDO AQUI
-        st.image(result[0].plot())
+if arquivo:
+    img = Image.open(arquivo)
+    col1, col2 = st.columns(2)
+    col1.image(img, caption="Original")
 
+    with st.spinner("Analisando..."):
+        results = modelo(img, conf=0.3)
+        for r in results:
+            col2.image(r.plot(), caption="Detectado")
+            for i, box in enumerate(r.boxes):
+                cls_nome = modelo.names[int(box.cls)]
+                if cls_nome in PRODUTOS:
+                    prod = PRODUTOS[cls_nome]
+                    if col1.button(f"➕ Adicionar {prod['nome']} - R$ {prod['preco']:.2f}", key=f"add_{i}_{random.randint(0,9999)}"):
+                        st.session_state.carrinho.append(prod)
+                        st.success(f"{prod['nome']} adicionado!")
+                        st.rerun()
+
+# --- CESTA COM PREÇO ---
 st.divider()
-st.subheader(f"Carrinho - Total R$ {st.session_state.total:.2f}")
+st.subheader(f"🛒 Sua Cesta ({len(st.session_state.carrinho)} itens)")
 
-if not st.session_state.carrinho:
-    st.write("Carrinho vazio")
+if len(st.session_state.carrinho) == 0:
+    st.info("Cesta vazia. Tire uma foto.")
 else:
+    total = 0
     for i, item in enumerate(st.session_state.carrinho):
-        st.write(f"{i+1}. {item['nome']} - R$ {item['preco']:.2f}")
+        c1, c2, c3 = st.columns([3,1,1])
+        c1.write(f"{item['nome']}")
+        c2.write(f"R$ {item['preco']:.2f}")
+        total += item['preco']
+        if c3.button("❌", key=f"del_{i}"):
+            st.session_state.carrinho.pop(i)
+            st.rerun()
+    
+    st.markdown(f"### **Total: R$ {total:.2f}**")
 
-    if st.button("Limpar carrinho"):
+    if st.button("Finalizar Compra e Gerar Código de Barras", type="primary"):
+        st.balloons()
+        # GERA CÓDIGO DE BARRAS DA COMPRA
+        codigo_compra = f"200{random.randint(1000000,9999999)}"
+        buffer = io.BytesIO()
+        Code128(codigo_compra, writer=ImageWriter()).write(buffer)
+        st.success(f"Compra #{codigo_compra} - Total R$ {total:.2f}")
+        st.image(buffer, caption=f"Código de Barras: {codigo_compra} - Passe no scanner do caixa")
         st.session_state.carrinho = []
-        st.session_state.total = 0.0
-        st.rerun()
