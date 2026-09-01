@@ -47,6 +47,21 @@ st.caption("YOLO-World - reconhece pelo nome sem treinar")
 
 foto = st.camera_input("📸 Aponte pro produto")
 
+
+tab1, tab2 = st.tabs(["📸 Câmera", "📁 Buscar arquivo"])
+
+with tab1:
+    foto_camera = st.camera_input("Aponte pro produto")
+
+with tab2:
+    foto_arquivo = st.file_uploader("Escolha a foto dos 5 produtos que gerei", type=["jpg","png","jpeg","webp"])
+
+# usa qual tiver foto
+foto = foto_camera if foto_camera is not None else foto_arquivo
+
+
+
+
 if foto:
     try:
         from ultralytics import YOLO
