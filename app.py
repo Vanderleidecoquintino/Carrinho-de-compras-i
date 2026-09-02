@@ -9,6 +9,11 @@ st.markdown("""
 <style>
 .stApp { background: linear-gradient(180deg, #FF6600 0%, #FF9A4D 10%, #FFFFFF 25%, #FFFFFF 80%, #FF6600 100%); }
 h1 { background: #FF6600; color: white!important; padding: 15px; border-radius: 15px; text-align: center; font-weight: 900; }
+h2, h3 { color: #000000!important; }
+p, span, label, div[data-testid="stMarkdownContainer"] p,.stSelectbox label, div[data-testid="stText"] {
+    color: #000000!important;
+    font-weight: 600!important;
+}
 .stButton > button { background: #FF6600; color: white; border-radius: 12px; font-weight: bold; border: none; }
 </style>
 """, unsafe_allow_html=True)
@@ -18,7 +23,6 @@ if 'carrinho' not in st.session_state:
 
 @st.cache_resource
 def load_model():
-    # Se você já treinou, troca aqui pra "yolo11m.pt" ou "best.pt"
     return YOLO("yolo11m.pt")
 
 model = load_model()
@@ -89,7 +93,7 @@ total = sum(x['preco'] for x in st.session_state.carrinho)
 st.divider()
 st.subheader(f"🛒 {len(st.session_state.carrinho)} itens - R$ {total:.2f}")
 for it in st.session_state.carrinho:
-    st.write(f"- {it['ean']} | {it['nome']}")
+    st.markdown(f"<p style='color:black!important'>- {it['ean']} | {it['nome']} R$ {it['preco']:.2f}</p>", unsafe_allow_html=True)
 
 if st.session_state.carrinho:
     if st.button("✅ PAGAR - GERAR CÓDIGO SAÍDA", type="primary", use_container_width=True):
