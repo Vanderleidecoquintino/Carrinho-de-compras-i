@@ -1,22 +1,27 @@
 import streamlit as st
+from ultralytics import YOLO
+from PIL import Image
 import random
 from io import BytesIO
-from PIL import Image
 
 st.set_page_config(page_title="Atacadão 1 Bip", page_icon="🛒")
-
 st.markdown("""
 <style>
 .stApp { background: linear-gradient(180deg, #FF6600 0%, #FF9A4D 10%, #FFFFFF 25%, #FFFFFF 80%, #FF6600 100%); }
-  h1 { background: #FF6600; color: white!important; padding: 15px; border-radius: 15px; text-align: center; font-weight: 900; }
+h1 { background: #FF6600; color: white!important; padding: 15px; border-radius: 15px; text-align: center; font-weight: 900; }
 .stButton > button { background: #FF6600; color: white; border-radius: 12px; font-weight: bold; border: none; }
-.stButton > button[kind="primary"] { background: #00A300!important; font-size: 18px; height: 60px; }
 </style>
 """, unsafe_allow_html=True)
 
 if 'carrinho' not in st.session_state:
     st.session_state.carrinho=[]
-    st.session_state.total=0.0
+
+@st.cache_resource
+def load_model():
+    # Se você já treinou, troca aqui pra "yolo11m.pt" ou "best.pt"
+    return YOLO("yolo11m.pt")
+
+model = load_model()
 
 produtos = [
     {"nome":"[BULNEZ] Água Mineral 500ml","preco":1.29,"ean":"7898915120015","yolo":["bottle"]},
@@ -40,33 +45,32 @@ produtos = [
 ]
 
 def bip():
-    st.markdown('<audio autoplay><source src="https://cdn.freesound.org/previews/4/4587_3198-lq.mp3" type="audio/mpeg"></audio>', unsafe_allow_html=True)
+    st.markdown('<audio autoplay><source src="https://cdn.freesound.org/previews/4/4587_3198-lq.mp3"></audio>', unsafe_allow_html=True)
 
 st.title("🛒 CLIENTE ATACADÃO")
 
 foto = st.camera_input("📸 Aponte pro produto e bipa")
 
 if foto:
-    try:
-        from ultralytics import YOLO
-        @st.cache_resource
-        def load(): return YOLO("yolov8n.pt")
-        model = load()
-        img = Image.open(foto)
-        res = model(img, verbose=False)
-        visto = set(model.names[int(b.cls)] for r in res for b in r.boxes)
-        if visto:
-            bip()
-            st.success(f"BIP! Detectei: {', '.join(visto)}")
-            sugestoes = [p for p in produtos if any(v in p['yolo'] for v in visto)]
-            if not sugestoes: sugestoes = produtos[:10]
-            for i,p in enumerate(sugestoes[:10]):
-                if st.button(f"➕ {p['ean']} | {p['nome']} R$ {p['preco']:.2f}", key=f"s{i}"):
+    img = Image.open(foto)
+    res = model(img, verbose=False, conf=0.4)
+    visto = set(model.names[int(b.cls)] for r in res for b in r.boxes) if res[0].boxes else set()
+
+    if visto:
+        bip()
+        st.success(f"BIP! Detectei: {', '.join(visto)}")
+        sugestoes = [p for p in produtos if any(v in p['yolo'] for v in visto)]
+        if not sugestoes: sugestoes = produtos[:8]
+
+        st.write("Sugestões:")
+        cols = st.columns(2)
+        for i,p in enumerate(sugestoes[:8]):
+            with cols[i%2]:
+                if st.button(f"➕ {p['ean'][-4:]} | {p['nome'][:20]}", key=f"s{i}_{p['ean']}"):
                     st.session_state.carrinho.append(p)
-                    st.session_state.total=sum(x['preco'] for x in st.session_state.carrinho)
                     bip(); st.rerun()
-    except Exception as e:
-        st.info(f"Carregando IA... {e}")
+    else:
+        st.warning("Não detectei - use a lista abaixo")
 
 st.divider()
 st.subheader("📋 Todos os Produtos - Combo Box")
@@ -76,31 +80,28 @@ sel = st.selectbox("Escolha:", list(mapa.keys()))
 c1,c2 = st.columns(2)
 with c1:
     if st.button("➕ ADICIONAR", use_container_width=True):
-        p=mapa[sel]; st.session_state.carrinho.append(p)
-        st.session_state.total=sum(x['preco'] for x in st.session_state.carrinho)
-        bip(); st.toast(f"EAN {p['ean']} OK!"); st.rerun()
+        st.session_state.carrinho.append(mapa[sel]); bip(); st.rerun()
 with c2:
     if st.button("🗑️ Limpar", use_container_width=True):
-        st.session_state.carrinho=[]; st.session_state.total=0.0; st.rerun()
+        st.session_state.carrinho=[]; st.rerun()
 
+total = sum(x['preco'] for x in st.session_state.carrinho)
 st.divider()
-st.subheader(f"🛒 {len(st.session_state.carrinho)} itens - R$ {st.session_state.total:.2f}")
+st.subheader(f"🛒 {len(st.session_state.carrinho)} itens - R$ {total:.2f}")
 for it in st.session_state.carrinho:
-    st.write(f"- {it['ean']} | {it['nome']} R$ {it['preco']:.2f}")
+    st.write(f"- {it['ean']} | {it['nome']}")
 
 if st.session_state.carrinho:
     if st.button("✅ PAGAR - GERAR CÓDIGO SAÍDA", type="primary", use_container_width=True):
         idc=str(random.randint(1000000000000,9999999999999))
-        import barcode
-        from barcode.writer import ImageWriter
-        CODE128=barcode.get_barcode_class('code128')
-        bar=CODE128(idc, writer=ImageWriter())
-        buf=BytesIO(); bar.write(buf)
-        buf.seek(0)
-        bip(); st.balloons()
-        st.success(f"PAGO! R$ {st.session_state.total:.2f}")
-        st.image(buf)
-        st.code(idc)
-        st.write("EANs na comanda:")
-        for p in st.session_state.carrinho:
-            st.code(p['ean'])
+        try:
+            import barcode
+            from barcode.writer import ImageWriter
+            CODE128=barcode.get_barcode_class('code128')
+            bar=CODE128(idc, writer=ImageWriter())
+            buf=BytesIO(); bar.write(buf); buf.seek(0)
+            st.image(buf)
+        except:
+            st.code(idc)
+        st.success(f"PAGO! R$ {total:.2f}")
+        st.balloons()
