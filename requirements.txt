@@ -1,9 +1,13 @@
 
-streamlit==1.39.0
-ultralytics==8.3.0
-opencv-python-headless==4.8.1.78
-Pillow==10.4.0
-pyzbar==0.1.9
+
+
+
+streamlit==1.38.0
+ultralytics==8.2.103
+opencv-python-headless==4.9.0.80
+torch==2.3.0
+torchaudio==2.3.0
+torchvision==0.18.0
+pillow==10.4.0
+python-barcode==0.15.0
 numpy==1.26.4
-pyarrow==14.0.1
-python-barcode
