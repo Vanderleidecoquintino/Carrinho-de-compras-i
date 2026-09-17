@@ -44,8 +44,8 @@ produtos = [
     {"nome":"Café Bom Jesus 250g","preco":12.98,"ean":"7896045500012","yolo":["box","cup"]},
     {"nome":"Chocolate Harald 500g","preco":59.90,"ean":"7896063800011","yolo":["box","book"]},
     {"nome":"Suco Subello 200ml","preco":1.49,"ean":"7898951000015","yolo":["box"]},
-    {"nome":"[BULNEZ] Esponja 3un","preco":2.49,"ean":"7898915120039","yolo":["box"]},
-    {"nome":"sacola","preco":0,30,"ean":"7899739503929","yolo":["box","book"]},
+    {"nome":"[BULNEZ] Esponja 3un","preco":2.49,"ean":"7899739503929","yolo":["box"]},
+    {"nome":"sacola","preco":0.30,"ean":"7899739503929","yolo":["box","book"]},
 ]
 
 def bip():
