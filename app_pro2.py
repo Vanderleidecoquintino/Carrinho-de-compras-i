@@ -1,44 +1,27 @@
+%%writefile /content/app_pro2.py
 import streamlit as st
-import os
+from PIL import Image
 from ultralytics import YOLO
-import glob
 
-st.set_page_config(page_title="Detector Ketchup Quero", layout="centered")
-st.title("🍅 Detector Ketchup Quero - 95%")
+st.set_page_config(page_title="Detector")
+st.title("📸 Detector - App Corrigido")
 
-# ACHA O best.pt EM QUALQUER LUGAR
-candidatos = glob.glob("/content/**/*.pt", recursive=True) + glob.glob("**/*.pt", recursive=True)
-candidatos = list(set(candidatos))
-
-if not candidatos:
-    st.error("❌ Não achei nenhum.pt! Sobe seu best.pt de novo em /content")
-    st.stop()
-
-# pega o maior arquivo.pt (seu best tem ~50MB)
-best_path = max(candidatos, key=lambda x: os.path.getsize(x))
-st.success(f"✅ Modelo carregado: {best_path} ({os.path.getsize(best_path)/1024/1024:.1f} MB)")
-
-# CARREGA O MODELO
 @st.cache_resource
-def load_model(path):
-    return YOLO(path)
+def load_model():
+    return YOLO("yolov8n.pt")
 
-model = load_model(best_path)
+model = load_model()
 
-# APP
-uploaded = st.file_uploader("Manda foto da garrafa azul", type=["jpg","jpeg","png"])
-cam = st.camera_input("Ou usa a câmera do cel")
+# AGORA ACEITA TUDO: jpg, png, webp, jpeg
+arquivo = st.file_uploader("Manda a foto", type=["jpg","jpeg","png","webp","bmp"])
 
-img = uploaded or cam
+if arquivo:
+    img = Image.open(arquivo).convert("RGB")
+    st.image(img, caption="Original", use_container_width=True)
 
-if img:
-    results = model(img, conf=0.25)
-    st.image(results[0].plot(), caption="Detecção", use_column_width=True)
-
-    for box in results[0].boxes:
-        cls = model.names[int(box.cls[0])]
-        conf = float(box.conf[0])*100
-        st.write(f"**{cls}**: {conf:.2f}%")
-
+    if st.button("DETECTAR"):
+        with st.spinner("Analisando..."):
+            results = model(img)
+            st.image(results[0].plot(), caption="Detectado", use_container_width=True)
 else:
-    st.info("👆 Manda uma foto pra testar")
+    st.info("Manda uma foto aí de cima 👆")
