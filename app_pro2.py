@@ -151,7 +151,7 @@ if foto:
 
         st.write(f"Debug: {nome} - {conf:.2f}") # mostra pra banca ver
 
-        if conf < 0.65:
+        if conf < 0.75:
             st.warning(f"Confiança baixa ({conf:.2f}) - mostro lista geral")
             sugestoes = produtos[:8]
         else:
