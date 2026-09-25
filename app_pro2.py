@@ -139,7 +139,7 @@ components.html(html_flip, height=70)
 foto = st.camera_input("📸 Aponte pro produto e bipa")
 if foto:
     img = Image.open(foto)
-    res = model(img, verbose=False, conf=0.65)[0] # aumentei o conf
+    res = model(img, verbose=False, conf=0.55)[0] # aumentei o conf
 
     if res.boxes is not None and len(res.boxes)>0:
         # pega só a detecção com MAIOR confiança
@@ -150,7 +150,7 @@ if foto:
 
         st.write(f"Debug: {nome} - {conf:.2f}") # mostra pra banca ver
 
-        if conf < 0.92:
+        if conf < 0.65:
             st.warning(f"Confiança baixa ({conf:.2f}) - mostro lista geral")
             sugestoes = produtos[:8]
         else:
