@@ -140,40 +140,35 @@ foto = st.camera_input("📸 Aponte pro produto e bipa")
 
 if foto:
     img = Image.open(foto)
-    res = model(img, verbose=False, conf=0.4)
-    visto = []
-    if res[0].boxes is not None and len(res[0].boxes)>0:
-        for b in res[0].boxes:
-            cls = int(b.cls[0])
-            nome = model.names[cls].lower()
-            visto.append(nome)
+    res = model(img, verbose=False, conf=0.55)[0] # aumentei o conf
 
-    if visto:
-        bip()
-        st.success(f"BIP! Detectei: {', '.join(visto)}")
+    if res.boxes is not None and len(res.boxes)>0:
+        # pega só a detecção com MAIOR confiança
+        best_box = max(res.boxes, key=lambda b: float(b.conf[0]))
+        conf = float(best_box.conf[0])
+        cls = int(best_box.cls[0])
+        nome = model.names[cls].lower()
 
-        sugestoes = []
-        if USE_BEST:
-            # procura pelo best.pt
-            for v in visto:
-                for chave, ean in mapa_best.items():
-                    if chave in v:
-                        p = next((x for x in produtos if x["ean"]==ean), None)
-                        if p: sugestoes.append(p)
-        else:
-            # modo antigo yolo generico
-            sugestoes = [p for p in produtos if any(v in p['yolo'] for v in visto)]
+        st.write(f"Debug: {nome} - {conf:.2f}") # mostra pra banca ver
 
-        if not sugestoes:
+        if conf < 0.65:
+            st.warning(f"Confiança baixa ({conf:.2f}) - mostro lista geral")
             sugestoes = produtos[:8]
-
-        # remove duplicados
-        sugestoes = list({p['ean']:p for p in sugestoes}.values())
+        else:
+            bip()
+            st.success(f"BIP! {nome} {conf:.0%}")
+            sugestoes = []
+            for chave, ean in mapa_best.items():
+                if chave in nome:
+                    p = next((x for x in produtos if x["ean"]==ean), None)
+                    if p: sugestoes.append(p)
+            if not sugestoes:
+                sugestoes = produtos[:8]
 
         cols = st.columns(2)
         for i,p in enumerate(sugestoes[:8]):
             with cols[i%2]:
-                if st.button(f"➕ {p['nome'][:22]}", key=f"s{i}_{p['ean']}"):
+                if st.button(f"➕ {p['nome'][:22]}", key=f"s{i}_{p['ean']}_{random.randint(0,9999)}"):
                     add_produto(p); bip(); st.rerun()
     else:
         st.warning("Não detectei - use a lista abaixo")
