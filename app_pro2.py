@@ -60,7 +60,7 @@ st.title("🛒 CLIENTE ATACADÃO")
 if st.button("Sair"): st.session_state.cpf=None; st.rerun()
 
 st.subheader("📸 Bipar com câmera que vira")
-components.html("
+components.html(""
 <div style="text-align:center; font-family:sans-serif">
   <video id="video" autoplay playsinline style="width:100%; max-height:320px; border-radius:12px; background:black; object-fit:cover"></video>
   <div style="margin-top:10px">
@@ -96,7 +96,7 @@ document.getElementById('snap').onclick = () => {
 };
 startCam();
 </script>
-", height=420)
+"", height=420)
 
 st.write("Depois de BIPAR, sobe a foto aqui:")
 foto = st.file_uploader("Subir foto", type=["jpg","jpeg","png"], label_visibility="collapsed", key="up_flip")
