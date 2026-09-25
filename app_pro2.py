@@ -137,7 +137,6 @@ document.getElementById('btnFlip').onclick = async () => {
 components.html(html_flip, height=70)
 
 foto = st.camera_input("📸 Aponte pro produto e bipa")
-
 if foto:
     img = Image.open(foto)
     res = model(img, verbose=False, conf=0.55)[0] # aumentei o conf
@@ -172,6 +171,7 @@ if foto:
                     add_produto(p); bip(); st.rerun()
     else:
         st.warning("Não detectei - use a lista abaixo")
+
 
 st.divider()
 st.subheader("📋 Todos os Produtos - Combo Box")
