@@ -60,8 +60,74 @@ st.title("🛒 CLIENTE ATACADÃO")
 if st.button("Sair"): st.session_state.cpf=None; st.rerun()
 
 st.subheader("📸 Bipar com câmera que vira")
-components.html("""
+components.html("
 <div style="text-align:center; font-family:sans-serif">
   <video id="video" autoplay playsinline style="width:100%; max-height:320px; border-radius:12px; background:black; object-fit:cover"></video>
   <div style="margin-top:10px">
-    <button id="flip" style="padding:12px 18px; background:#ff6b00; color:white; border:none; border
+    <button id="flip" style="padding:12px 18px; background:#ff6b00; color:white; border:none; border-radius:10px; font-weight:bold">🔄 VIRAR CÂMERA</button>
+    <button id="snap" style="padding:12px 18px; background:#00a000; color:white; border:none; border-radius:10px; font-weight:bold; margin-left:8px">📸 BIPAR</button>
+  </div>
+  <canvas id="canvas" style="display:none"></canvas>
+  <p style="font-size:12px; color:gray; margin-top:8px">BIPAR baixa a foto automaticamente</p>
+</div>
+<script>
+let currentFacing = "environment";
+let stream;
+async function startCam(){
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); }
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode: currentFacing}, audio:false});
+    document.getElementById('video').srcObject = stream;
+  }catch(e){ alert("Permita a câmera no Chrome"); }
+}
+document.getElementById('flip').onclick = () => {
+  currentFacing = currentFacing === "environment"? "user" : "environment";
+  startCam();
+};
+document.getElementById('snap').onclick = () => {
+  let v = document.getElementById('video');
+  let c = document.getElementById('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  let link = document.createElement('a');
+  link.download = 'bip.jpg';
+  link.href = c.toDataURL('image/jpeg');
+  link.click();
+};
+startCam();
+</script>
+", height=420)
+
+st.write("Depois de BIPAR, sobe a foto aqui:")
+foto = st.file_uploader("Subir foto", type=["jpg","jpeg","png"], label_visibility="collapsed", key="up_flip")
+
+if foto:
+    img=Image.open(foto).convert("RGB")
+    st.image(img, width=250)
+    res=model(img, verbose=False, conf=0.3)[0]
+    if len(res.boxes)>0:
+        st.success(f"BIP! {len(res.boxes)} detectado")
+        st.toast("Adicione na lista abaixo")
+
+st.divider()
+mapa={f"{p['ean']} - {p['nome']} - R$ {p['preco']:.2f}":p for p in produtos}
+sel=st.selectbox("Escolha produto:", list(mapa.keys()))
+if st.button("➕ ADICIONAR", use_container_width=True):
+    add_produto(mapa[sel]); st.rerun()
+
+total=sum(v['dados']['preco']*v['qtd'] for v in st.session_state.carrinho.values())
+st.subheader(f"🛒 Cesta R$ {total:.2f}")
+for ean,item in list(st.session_state.carrinho.items()):
+    c1,c2=st.columns([3,1])
+    c1.write(f"{item['dados']['nome'][:30]} x{item['qtd']}")
+    if c2.button("➖", key="m_"+ean):
+        if item['qtd']>1: st.session_state.carrinho[ean]['qtd']-=1
+        else: del st.session_state.carrinho[ean]
+        salvar(); st.rerun()
+
+if st.session_state.carrinho:
+    if st.button("✅ PAGAR", type="primary", use_container_width=True):
+        cod=str(random.randint(1000000000000,9999999999999))
+        st.success(f"PAGO R$ {total:.2f} COD:{cod}")
+        st.balloons()
+        st.session_state.carrinho={}; salvar()
